@@ -63,9 +63,10 @@ cpu-scheduling-simulator/
 
 ## Installation & Running Locally
 
-1. Clone or copy the folder:
+1. Clone the repository and navigate into the project folder:
    ```bash
-   cd C:\Users\sanya\.gemini\antigravity\scratch\cpu-scheduling-simulator
+   git clone [https://github.com/sanyagith/cpu-scheduling-visualizer.git](https://github.com/sanyagith/cpu-scheduling-visualizer.git)
+   cd cpu-scheduling-visualizer
    ```
 
 2. Install dependencies (standard tools only, like `serve` to bypass CORS rules on local ES modules):
