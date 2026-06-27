@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="CPU Scheduling Algorithm Visualizer - A modern web visualizer to simulate, animate, and compare CPU scheduling algorithms like FCFS, SJF, SRTF, Round Robin, and Priority.">
+    <title>CPU Scheduling Visualizer</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Core and Component Styles -->
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/dashboard.css">
+    
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+        <div class="logo-container">
+            <div class="logo-icon">🎛️</div>
+            <div class="logo-text">CPU SCHEDULER</div>
+        </div>
+        
+        <nav class="nav-links">
+            <a class="nav-link active" data-view="simulator">
+                <span>📊</span> Simulator
+            </a>
+            <a class="nav-link" data-view="comparison">
+                <span>⚔️</span> Comparison Mode
+            </a>
+            <a class="nav-link" data-view="education">
+                <span>📚</span> Learning Center
+            </a>
+            <a class="nav-link" data-view="history">
+                <span>📜</span> Saved Simulations
+            </a>
+        </nav>
+        
+        <div class="theme-toggle-container">
+            <span class="theme-label">Light / Dark Theme</span>
+            <button class="theme-btn" id="theme-toggle-btn" aria-label="Toggle Theme">
+                <span class="theme-toggle-icon">☀️</span>
+            </button>
+        </div>
+    </aside>
+
+    <!-- Mobile Navigation Toggle -->
+    <button class="sidebar-toggle" id="sidebar-toggle-btn" aria-label="Toggle Menu">
+        <span>☰</span>
+    </button>
+
+    <!-- Main Content Wrapper -->
+    <main class="main-wrapper">
+
+        <!-- ================= SIMULATOR VIEW ================= -->
+        <section id="view-simulator" class="view-section active">
+            <div class="header-row">
+                <div>
+                    <h1 class="page-title">CPU Scheduling Simulator</h1>
+                    <p class="page-desc">Simulate execution timelines, scrub through time steps, and view metrics live.</p>
+                </div>
+                <div style="display: flex; gap: 8px;">
+                    <button class="btn btn-secondary" id="save-simulation-btn">💾 Save Sim</button>
+                    <button class="btn btn-secondary" id="export-csv-btn">📤 Export CSV</button>
+                </div>
+            </div>
+
+            <div class="dashboard-grid">
+                <!-- Left Main Panel -->
+                <div class="dashboard-section">
+                    
+                    <!-- Timeline Controls & Scrubber Card -->
+                    <div class="glass-card timeline-control-panel">
+                        <div class="panel-title">
+                            <span>Timeline Controls</span>
+                            <span class="time-readout" id="sim-time-readout">t = 0</span>
+                        </div>
+                        
+                        <!-- Timeline Scrubber -->
+                        <div class="scrubber-row">
+                            <span style="font-size: 0.8rem; color: var(--text-muted);">Start</span>
+                            <input type="range" class="scrubber-slider" id="timeline-scrubber" min="0" max="0" value="0">
+                            <span style="font-size: 0.8rem; color: var(--text-muted);" id="timeline-end-label">End</span>
+                        </div>
+                        
+                        <!-- Playback Controls Buttons -->
+                        <div class="playback-buttons">
+                            <button class="playback-btn" id="btn-restart" title="Restart simulation (t=0)">⏮️</button>
+                            <button class="playback-btn" id="btn-prev" title="Step backward (t-1)">◀️</button>
+                            <button class="playback-btn" id="btn-play" title="Play simulation">▶️</button>
+                            <button class="playback-btn" id="btn-next" title="Step forward (t+1)">▶️</button>
+                            
+                            <div class="speed-control">
+                                <span style="font-size: 0.8rem; color: var(--text-muted);">Speed:</span>
+                                <select class="speed-select" id="playback-speed-select">
+                                    <option value="0.25">0.25×</option>
+                                    <option value="0.5">0.5×</option>
+                                    <option value="1.0" selected>1×</option>
+                                    <option value="2.0">2×</option>
+                                    <option value="4.0">4×</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Gantt Chart Card -->
+                    <div class="glass-card">
+                        <div class="panel-title">
+                            <span>Gantt Chart (Time Allocations)</span>
+                            <button class="btn btn-secondary" style="padding: 4px 8px; font-size: 0.75rem;" id="export-gantt-png-btn">📷 Export PNG</button>
+                        </div>
+                        <div class="gantt-container" id="gantt-chart-wrapper">
+                            <!-- Gantt content loaded dynamically -->
+                        </div>
+                    </div>
+
+                    <!-- Animated CPU States Card -->
+                    <div class="glass-card">
+                        <h3 class="panel-title">Interactive Pipeline Visualization</h3>
+                        <div class="animation-container">
+                            <div class="pipeline-row">
+                                <!-- Ready Queue -->
+                                <div class="pipeline-node">
+                                    <span class="pipeline-label">Ready Queue (FIFO)</span>
+                                    <div class="process-lane" id="lane-ready">
+                                        <div style="color: var(--text-muted); font-size: 0.85rem; font-style: italic; width: 100%; text-align: center;">Ready queue is empty</div>
+                                    </div>
+                                </div>
+                                
+                                <div class="pipeline-arrow">↓</div>
+
+                                <!-- CPU Block -->
+                                <div class="pipeline-node">
+                                    <span class="pipeline-label">CPU (Execution)</span>
+                                    <div id="lane-cpu" style="display: flex; justify-content: center; align-items: center; width: 100%; min-height: 90px;">
+                                        <div class="process-block idle" style="min-width: 80px; height: 80px;">
+                                            <span class="p-id">IDLE</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="pipeline-arrow">↓</div>
+
+                                <!-- Completed Queue -->
+                                <div class="pipeline-node">
+                                    <span class="pipeline-label">Completed Processes</span>
+                                    <div class="process-lane" id="lane-completed">
+                                        <div style="color: var(--text-muted); font-size: 0.85rem; font-style: italic; width: 100%; text-align: center;">No processes completed</div>
+                                    </div>
+                                </div>
+
+                                <div class="pipeline-arrow">↓</div>
+
+                                <!-- Upcoming Queue -->
+                                <div class="pipeline-node">
+                                    <span class="pipeline-label">Upcoming / Arriving Later</span>
+                                    <div class="process-lane" id="lane-upcoming">
+                                        <div style="color: var(--text-muted); font-size: 0.85rem; font-style: italic; width: 100%; text-align: center;">All processes arrived</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Statistics Dashboard Cards -->
+                    <div class="stats-row">
+                        <div class="glass-card stat-card" style="--accent-color: var(--primary-color);">
+                            <span class="stat-label">Avg Waiting Time</span>
+                            <div class="stat-value" id="stat-avg-wait">0.00</div>
+                            <span class="stat-desc">Time processes wait in queue</span>
+                        </div>
+                        <div class="glass-card stat-card" style="--accent-color: var(--green-color);">
+                            <span class="stat-label">Avg Turnaround Time</span>
+                            <div class="stat-value" id="stat-avg-turnaround">0.00</div>
+                            <span class="stat-desc">Total time elapsed to execute</span>
+                        </div>
+                        <div class="glass-card stat-card" style="--accent-color: var(--yellow-color);">
+                            <span class="stat-label">Avg Response Time</span>
+                            <div class="stat-value" id="stat-avg-response">0.00</div>
+                            <span class="stat-desc">Time to first execution slot</span>
+                        </div>
+                        <div class="glass-card stat-card" style="--accent-color: var(--purple-color);">
+                            <span class="stat-label">CPU Utilization</span>
+                            <div class="stat-value" id="stat-cpu-util">0.0%</div>
+                            <span class="stat-desc">Time CPU is executing code</span>
+                        </div>
+                    </div>
+
+                    <!-- Interactive Process Table -->
+                    <div class="glass-card">
+                        <h3 class="panel-title">Execution Result Table</h3>
+                        <div class="table-responsive">
+                            <table class="process-table" id="results-table">
+                                <thead>
+                                    <tr>
+                                        <th data-sort="id">Process ID ↕</th>
+                                        <th data-sort="arrivalTime">Arrival ↕</th>
+                                        <th data-sort="burstTime">Burst ↕</th>
+                                        <th data-sort="priority">Priority ↕</th>
+                                        <th data-sort="startTime">Start ↕</th>
+                                        <th data-sort="completionTime">Completion ↕</th>
+                                        <th data-sort="waitingTime">Waiting ↕</th>
+                                        <th data-sort="turnaroundTime">Turnaround ↕</th>
+                                        <th data-sort="responseTime">Response ↕</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="results-table-body">
+                                    <tr>
+                                        <td colspan="9" style="text-align: center; color: var(--text-muted);">No process execution data available. Add processes in the settings panel.</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Right Settings Sidebar -->
+                <div class="dashboard-section">
+                    
+                    <!-- Scheduling Algorithm Selector Card -->
+                    <div class="glass-card">
+                        <h3 class="panel-title">Scheduling Policy</h3>
+                        
+                        <div class="form-group">
+                            <label class="form-label" for="algo-select">Algorithm</label>
+                            <select class="form-control" id="algo-select">
+                                <option value="FCFS">First Come First Serve (FCFS)</option>
+                                <option value="SJF">Shortest Job First (SJF)</option>
+                                <option value="SRTF">Shortest Remaining Time First (SRTF)</option>
+                                <option value="PriorityNonPreemptive">Priority (Non-Preemptive)</option>
+                                <option value="PriorityPreemptive">Priority (Preemptive)</option>
+                                <option value="RoundRobin">Round Robin (RR)</option>
+                                <option value="HRRN">Highest Response Ratio Next (HRRN)</option>
+                            </select>
+                        </div>
+                        
+                        <!-- Time Quantum parameter for RR -->
+                        <div class="form-group" id="rr-quantum-group" style="display: none;">
+                            <label class="form-label" for="time-quantum-input">Time Quantum</label>
+                            <input class="form-control" type="number" id="time-quantum-input" min="1" value="2">
+                        </div>
+
+                        <!-- Priority options -->
+                        <div class="form-group" id="priority-rules-group" style="display: none;">
+                            <label class="form-label" for="prio-rule-select">Priority Scheme</label>
+                            <select class="form-control" id="prio-rule-select">
+                                <option value="low">Lower Number is Higher Priority (Default)</option>
+                                <option value="high">Higher Number is Higher Priority</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Process List Configuration Card -->
+                    <div class="glass-card">
+                        <div class="panel-title">
+                            <span>Job Queue Setup</span>
+                            <div style="display: flex; gap: 4px;">
+                                <button class="btn btn-secondary" style="padding: 4px 8px; font-size: 0.75rem;" id="undo-btn" title="Undo">↩️</button>
+                                <button class="btn btn-secondary" style="padding: 4px 8px; font-size: 0.75rem;" id="redo-btn" title="Redo">↪️</button>
+                            </div>
+                        </div>
+
+                        <div style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px;">
+                            <button class="btn btn-primary" id="open-add-modal-btn">➕ Add Process</button>
+                            <button class="btn btn-secondary" id="random-data-btn">🎲 Generate Random Data</button>
+                            <button class="btn btn-secondary" id="example-dataset-btn">📚 Load Example Dataset</button>
+                            
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                                <button class="btn btn-secondary" id="import-csv-trigger-btn">📥 Import CSV</button>
+                                <button class="btn btn-danger" id="clear-all-btn">🗑️ Clear Queue</button>
+                            </div>
+                            <input type="file" id="csv-file-input" accept=".csv" style="display: none;">
+                        </div>
+
+                        <!-- Mini Process List to quickly remove or edit -->
+                        <h4 style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600; margin-bottom: 8px;">Active Process Inputs</h4>
+                        <div style="max-height: 240px; overflow-y: auto; border: 1px solid var(--card-border); border-radius: var(--border-radius-sm); padding: 4px;" id="input-process-list">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= COMPARISON MODE VIEW ================= -->
+        <section id="view-comparison" class="view-section">
+            <div class="header-row">
+                <div>
+                    <h1 class="page-title">Side-by-Side Algorithm Comparison</h1>
+                    <p class="page-desc">Simulate your dataset across multiple algorithms and review performance charts.</p>
+                </div>
+            </div>
+
+            <div class="dashboard-grid">
+                <!-- Left panel with graphs and stats table -->
+                <div class="dashboard-section">
+                    
+                    <!-- Gantt timelines comparative list -->
+                    <div class="glass-card">
+                        <h3 class="panel-title">Comparative Gantt Charts</h3>
+                        <div id="comparison-gantts-wrapper" style="display: flex; flex-direction: column; gap: 20px;">
+                            <!-- Comparative Gantts generated here -->
+                        </div>
+                    </div>
+
+                    <!-- Comparison Charts Dashboard -->
+                    <div class="glass-card" style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+                        <div>
+                            <h4 class="panel-title" style="font-size: 0.95rem;">Average Latency Comparison</h4>
+                            <div style="position: relative; height: 260px; width: 100%;">
+                                <canvas id="chart-avg-times"></canvas>
+                            </div>
+                        </div>
+                        <div>
+                            <h4 class="panel-title" style="font-size: 0.95rem;">CPU Utilization (%)</h4>
+                            <div style="position: relative; height: 260px; width: 100%;">
+                                <canvas id="chart-cpu-utilization"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="glass-card" style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+                        <div>
+                            <h4 class="panel-title" style="font-size: 0.95rem;">Total Context Switches</h4>
+                            <div style="position: relative; height: 260px; width: 100%;">
+                                <canvas id="chart-context-switches"></canvas>
+                            </div>
+                        </div>
+                        <div>
+                            <h4 class="panel-title" style="font-size: 0.95rem;">System Throughput (processes/sec)</h4>
+                            <div style="position: relative; height: 260px; width: 100%;">
+                                <canvas id="chart-throughput"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Comparative Table -->
+                    <div class="glass-card">
+                        <h3 class="panel-title">Summary Comparison Table</h3>
+                        <div class="table-responsive">
+                            <table class="process-table" id="comparison-summary-table">
+                                <thead>
+                                    <tr>
+                                        <th>Algorithm</th>
+                                        <th>Avg Waiting Time</th>
+                                        <th>Avg Turnaround Time</th>
+                                        <th>Avg Response Time</th>
+                                        <th>CPU Utilization</th>
+                                        <th>Context Switches</th>
+                                        <th>Throughput</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="comparison-summary-table-body">
+                                    <!-- Comparative data inserted dynamically -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Right Config panel to select compare targets -->
+                <div class="dashboard-section">
+                    <div class="glass-card">
+                        <h3 class="panel-title">Select Algorithms to Compare</h3>
+                        <div style="display: flex; flex-direction: column; gap: 12px;" id="compare-algorithms-selector">
+                            <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                                <input type="checkbox" value="FCFS" checked> First Come First Serve (FCFS)
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                                <input type="checkbox" value="SJF" checked> Shortest Job First (SJF)
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                                <input type="checkbox" value="SRTF" checked> Shortest Remaining Time First (SRTF)
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                                <input type="checkbox" value="PriorityNonPreemptive" checked> Priority (Non-Preemptive)
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                                <input type="checkbox" value="PriorityPreemptive" checked> Priority (Preemptive)
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                                <input type="checkbox" value="RoundRobin" checked> Round Robin (RR)
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                                <input type="checkbox" value="HRRN" checked> Highest Response Ratio Next (HRRN)
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= LEARNING CENTER VIEW ================= -->
+        <section id="view-education" class="view-section">
+            <div class="header-row">
+                <div>
+                    <h1 class="page-title">Learning Center</h1>
+                    <p class="page-desc">Explore the inner workings, pros, cons, and equations of scheduling strategies.</p>
+                </div>
+            </div>
+
+            <div class="edu-container">
+                <!-- Left Nav -->
+                <div class="edu-sidebar" id="edu-sidebar-nav">
+                    <!-- Loaded dynamically -->
+                </div>
+                
+                <!-- Right details -->
+                <div class="edu-content" id="edu-content-pane">
+                    <!-- Loaded dynamically -->
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= SAVED SIMULATIONS VIEW ================= -->
+        <section id="view-history" class="view-section">
+            <div class="header-row">
+                <div>
+                    <h1 class="page-title">Simulation Repository</h1>
+                    <p class="page-desc">Load previously saved simulations, search them, and review settings.</p>
+                </div>
+            </div>
+
+            <div class="glass-card" style="margin-bottom: 24px;">
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label class="form-label" for="search-simulations-input">Search Simulation Runs</label>
+                    <input class="form-control" type="text" id="search-simulations-input" placeholder="Search by description or processes count...">
+                </div>
+            </div>
+
+            <div class="glass-card">
+                <div class="table-responsive">
+                    <table class="process-table" id="simulations-history-table">
+                        <thead>
+                            <tr>
+                                <th>Saved Description</th>
+                                <th>Algorithm</th>
+                                <th>Process Count</th>
+                                <th>Date Saved</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="simulations-history-table-body">
+                            <!-- Dynamically loaded list -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- ================= ADD PROCESS MODAL ================= -->
+    <div class="modal-overlay" id="add-process-modal">
+        <div class="glass-card modal-card">
+            <h3 class="panel-title" id="process-modal-title">Create Process</h3>
+            
+            <form id="add-process-form">
+                <div class="form-group">
+                    <label class="form-label" for="modal-pid-input">Process ID</label>
+                    <input class="form-control" type="text" id="modal-pid-input" required placeholder="e.g. P1">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" for="modal-arr-input">Arrival Time</label>
+                    <input class="form-control" type="number" id="modal-arr-input" min="0" required placeholder="e.g. 0">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" for="modal-burst-input">Burst Time</label>
+                    <input class="form-control" type="number" id="modal-burst-input" min="1" required placeholder="e.g. 5">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" for="modal-priority-input">Priority</label>
+                    <input class="form-control" type="number" id="modal-priority-input" value="1" placeholder="e.g. 1">
+                </div>
+
+                <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 24px;">
+                    <button class="btn btn-secondary" type="button" id="modal-cancel-btn">Cancel</button>
+                    <button class="btn btn-primary" type="submit" id="modal-submit-btn">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ================= SAVE SIMULATION MODAL ================= -->
+    <div class="modal-overlay" id="save-simulation-modal">
+        <div class="glass-card modal-card">
+            <h3 class="panel-title">Save Simulation Run</h3>
+            
+            <form id="save-simulation-form">
+                <div class="form-group">
+                    <label class="form-label" for="save-description-input">Description / Name</label>
+                    <input class="form-control" type="text" id="save-description-input" required placeholder="e.g. Test case for SJF scheduling">
+                </div>
+
+                <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 24px;">
+                    <button class="btn btn-secondary" type="button" id="save-modal-cancel-btn">Cancel</button>
+                    <button class="btn btn-primary" type="submit">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Core App JS Loader -->
+    <script type="module" src="js/ui/controls.js"></script>
+
+</body>
+</html>

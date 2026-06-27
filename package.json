@@ -1,0 +1,11 @@
+{
+  "name": "cpu-scheduling-simulator",
+  "version": "1.0.0",
+  "description": "CPU Scheduling Algorithm Visualizer",
+  "type": "module",
+  "scripts": {
+    "test": "node js/test_suite.js",
+    "dev": "npx -y serve ./"
+  },
+  "dependencies": {}
+}
